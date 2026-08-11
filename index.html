@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LeadFlow AI — Real Estate Demo</title>
+<style>
+body{font-family:Inter,system-ui,sans-serif;background:#f5f6f8;margin:0;color:#17202a}
+.wrap{max-width:1050px;margin:30px auto;padding:0 18px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.logo{font-weight:800;font-size:22px}.badge{background:#e8f7ee;color:#16743b;padding:7px 11px;border-radius:999px;font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.card{background:white;border:1px solid #e3e6ea;border-radius:16px;padding:20px;box-shadow:0 4px 18px #00000008}
+h1{font-size:28px;margin:0 0 8px} h2{font-size:18px;margin-top:0}
+.sub{color:#68727d}
+.chat{height:440px;display:flex;flex-direction:column}
+.messages{flex:1;overflow:auto;padding:10px 0}
+.msg{max-width:78%;padding:11px 13px;border-radius:14px;margin:8px 0;line-height:1.35}
+.ai{background:#eef1f5}.user{background:#1f2937;color:white;margin-left:auto}
+.controls{display:flex;gap:8px}.controls input{flex:1;padding:12px;border:1px solid #d6dbe1;border-radius:10px}
+button{border:0;border-radius:10px;padding:11px 14px;background:#17202a;color:white;cursor:pointer}
+button.secondary{background:#eef1f5;color:#17202a}
+.lead{display:grid;gap:10px}
+.row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #eee}
+.status{font-weight:700;color:#16743b}
+.notice{margin-top:15px;background:#fff8e6;border:1px solid #f0d58a;padding:12px;border-radius:10px;font-size:13px}
+@media(max-width:800px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div class="logo">LeadFlow AI</div><div class="badge">Demo • Real Estate Lead Recovery</div></header>
+<div class="grid">
+<section class="card">
+<h1>AI Lead Recovery</h1>
+<p class="sub">A demo of how a new property lead could be qualified and converted into a viewing appointment.</p>
+<div class="chat">
+<div id="messages" class="messages"></div>
+<div class="controls"><input id="input" placeholder="Type a reply…"><button onclick="send()">Send</button></div>
+<div style="margin-top:8px;display:flex;gap:8px">
+<button class="secondary" onclick="quick('I want to buy within 3 months')">Buyer</button>
+<button class="secondary" onclick="quick('Tuesday at 4 PM works')">Book</button>
+</div>
+</div>
+</section>
+<section class="card">
+<h2>Agent dashboard</h2>
+<div class="lead">
+<div class="row"><span>Lead</span><strong id="name">John Smith</strong></div>
+<div class="row"><span>Property</span><strong>$850,000</strong></div>
+<div class="row"><span>Intent</span><strong id="intent">Not qualified</strong></div>
+<div class="row"><span>Timeline</span><strong id="timeline">Unknown</strong></div>
+<div class="row"><span>Appointment</span><strong id="appt">Not booked</strong></div>
+<div class="row"><span>Status</span><strong class="status" id="status">New lead</strong></div>
+</div>
+<div class="notice">Demo only: no real messages, leads, calendars or customer systems are connected.</div>
+</section>
+</div>
+</div>
+<script>
+const m=document.getElementById('messages');
+const input=document.getElementById('input');
+let stage=0;
+function add(text,who){const d=document.createElement('div');d.className='msg '+who;d.textContent=text;m.appendChild(d);m.scrollTop=m.scrollHeight;}
+function bot(text){setTimeout(()=>add(text,'ai'),350);}
+function quick(t){input.value=t;send();}
+function send(){
+ const t=input.value.trim(); if(!t)return;
+ add(t,'user'); input.value='';
+ const x=t.toLowerCase();
+ if(stage===0){
+   document.getElementById('intent').textContent='Buyer';
+   stage=1;
+   bot("Thanks, John! When are you looking to buy — within 3 months, 3–6 months, or later?");
+ } else if(stage===1){
+   if(x.includes('3')||x.includes('soon')||x.includes('month')){
+     document.getElementById('timeline').textContent='Within 3 months';
+     stage=2;
+     bot("Great. I can help arrange a viewing. Would Tuesday at 4 PM or Wednesday at 11 AM work better?");
+   } else { bot("Thanks. What timeframe are you considering?"); }
+ } else {
+   if(x.includes('tuesday')||x.includes('4 pm')||x.includes('4pm')){
+     document.getElementById('appt').textContent='Tuesday, 4:00 PM';
+     document.getElementById('status').textContent='Qualified • Appointment booked';
+     bot("Perfect — Tuesday at 4 PM is booked. The agent has been notified.");
+   } else if(x.includes('wednesday')||x.includes('11')){
+     document.getElementById('appt').textContent='Wednesday, 11:00 AM';
+     document.getElementById('status').textContent='Qualified • Appointment booked';
+     bot("Perfect — Wednesday at 11 AM is booked. The agent has been notified.");
+   } else { bot("No problem. Please choose Tuesday at 4 PM or Wednesday at 11 AM."); }
+ }
+}
+add("Hi John! Thanks for your interest in the $850,000 property. Are you looking to buy?","ai");
+</script>
+</body>
+</html>
