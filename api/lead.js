@@ -1,21 +1,27 @@
 export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.setHeader('Allow', 'POST, OPTIONS');
+    return res.status(405).json({ ok: false, error: 'Method not allowed' });
   }
 
   try {
-    const { intent, timeline, budget, details } = req.body || {};
-    if (!intent || !['Buyer', 'Seller'].includes(intent)) {
-      return res.status(400).json({ error: 'intent must be Buyer or Seller' });
+    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+    const { intent, timeline, budget, details } = body;
+
+    if (!['Buyer', 'Seller'].includes(intent)) {
+      return res.status(400).json({ ok: false, error: 'intent must be Buyer or Seller' });
     }
 
-    const value = parseMoney(budget);
-    const timelineScore = scoreTimeline(timeline);
-    const valueScore = scoreValue(intent, value);
+    const dealValue = parseMoney(budget);
+    const timelineResult = scoreTimeline(timeline);
+    const valueScore = scoreValue(intent, dealValue);
     const detailScore = details ? 17 : 0;
-    const intentScore = 18;
-    const score = Math.min(100, intentScore + timelineScore + valueScore + detailScore);
+    const score = Math.min(100, 18 + timelineResult.points + valueScore + detailScore);
     const temperature = score >= 78 ? 'HOT' : score >= 48 ? 'WARM' : 'COLD';
 
     return res.status(200).json({
@@ -23,15 +29,16 @@ export default async function handler(req, res) {
       lead: {
         intent,
         timeline: timeline || 'Unknown',
+        timelinePoints: timelineResult.points,
         budget: budget || 'Unknown',
-        dealValue: value,
+        dealValue,
         details: details || 'Unknown',
         score,
         temperature
       }
     });
   } catch (error) {
-    return res.status(500).json({ error: 'Unable to score lead' });
+    return res.status(400).json({ ok: false, error: 'Invalid request body' });
   }
 }
 
@@ -47,19 +54,24 @@ function parseMoney(input) {
 
 function scoreTimeline(input) {
   const x = String(input || '').toLowerCase();
-  if (/today|now|asap|immediately/.test(x)) return 34;
-  if (/tomorrow|in 1 day/.test(x)) return 31;
-  if (/in 2 days/.test(x)) return 29;
-  if (/in 3 days/.test(x)) return 27;
-  if (/this week/.test(x)) return 25;
-  if (/next week/.test(x)) return 21;
-  const match = x.match(/(?:in\s*)?(\d+)\s*(week|weeks|month|months|year|years)/);
-  if (!match) return /later|sometime|not sure|maybe/.test(x) ? 10 : 0;
-  const n = Number(match[1]);
-  const unit = match[2];
-  if (unit.startsWith('week')) return Math.max(8, 24 - n * 2);
-  if (unit.startsWith('month')) return Math.max(5, 21 - n * 2);
-  return 4;
+  if (/\b(today|now|asap|immediately)\b/.test(x)) return { label: 'Today', points: 34 };
+  if (/\b(tomorrow|in 1 day)\b/.test(x)) return { label: 'Tomorrow', points: 31 };
+  if (/\bin 2 days?\b/.test(x)) return { label: 'In 2 days', points: 29 };
+  if (/\bin 3 days?\b/.test(x)) return { label: 'In 3 days', points: 27 };
+  if (/\bthis week\b/.test(x)) return { label: 'This week', points: 25 };
+  if (/\bnext week\b/.test(x)) return { label: 'Next week', points: 21 };
+
+  const match = x.match(/\b(?:in\s*)?(\d+)\s*(weeks?|months?|years?)\b/);
+  if (match) {
+    const n = Number(match[1]);
+    const unit = match[2];
+    if (unit.startsWith('week')) return { label: `In ${n} week${n === 1 ? '' : 's'}`, points: Math.max(8, 24 - n * 2) };
+    if (unit.startsWith('month')) return { label: `In ${n} month${n === 1 ? '' : 's'}`, points: Math.max(5, 21 - n * 2) };
+    return { label: `In ${n} year${n === 1 ? '' : 's'}`, points: 4 };
+  }
+
+  if (/\b(later|sometime|not sure|maybe)\b/.test(x)) return { label: '3–12+ months', points: 10 };
+  return { label: 'Unknown', points: 0 };
 }
 
 function scoreValue(intent, value) {
